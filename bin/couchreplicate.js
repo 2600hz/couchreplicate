@@ -1,9 +1,12 @@
 #!/usr/bin/env node
 
 const cam = require('../index.js')
+const fs = require('fs');
+const yaml = require('js-yaml')
 const url = require('url')
 const syntax =
 `Syntax:
+--config_file/-f              Path to configuration file
 --source/-s                   CouchDB source URL                              (required)
 --target/-t                   CouchDB target URL                              (required)
 --concurrency/-c              Number of replications to run at once           (default: 1)
@@ -13,11 +16,15 @@ const syntax =
 --quiet/-q                    Supress progress bars                          (default: false)
 --live/-l                     Setup live (continuous) replications instead   (default: false)
 --nomonitor/-n                Don't monitor the replications after setup     (default: false)
---deletions                         Include deleted docs (default: false)
+--deletions                   Include deleted docs (default: false)
 `
 const { parseArgs } = require('node:util')
 const argv = process.argv.slice(2)
 const options = {
+  config_file: {
+    type: 'string',
+    short: 'f',
+  },
   source: {
     type: 'string',
     short: 's'
@@ -50,6 +57,11 @@ const options = {
     short: 'q',
     default: false
   },
+  live: {
+    type: 'boolean',
+    short: 'l',
+    default: false
+  },
   nomonitor: {
     type: 'boolean',
     short: 'n',
@@ -63,13 +75,47 @@ const options = {
 }
 
 // parse command-line options
-const { values } = parseArgs({ argv, options })
+const { values: commandLineValues } = parseArgs({ argv, options })
 
 // help mode
-if (values.help) {
+if (commandLineValues.help) {
   console.log(syntax)
   process.exit(0)
 }
+
+const readConfigFile = (config_path) => {
+  try {
+    let fileContents = fs.readFileSync(config_path, 'utf8');
+    let data = yaml.load(fileContents);
+
+    return data
+  } catch (e) {
+      console.error(e);
+      process.exit(2)
+  }
+}
+
+// config flags
+if (commandLineValues.config_file) {
+  configFile = readConfigFile(commandLineValues.config_file)
+  args = []
+  Object.keys(configFile).forEach(function(key) {
+    args.push(`--${key}`)
+    if (typeof configFile[key] == 'boolean') {
+      if (configFile[key] === false) {
+        args.pop()
+      }
+    } else {
+      args.push(String(configFile[key]))
+    }
+  });
+  const { values: configFileValues } = parseArgs({ args, options })
+  values = configFileValues
+} else {
+  const values = commandLineValues
+}
+
+console.log(values)
 
 // string to int
 values.concurrency = parseInt(values.concurrency)
