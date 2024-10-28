@@ -1,0 +1,10 @@
+---
+source: http://user:password@localhost:5984
+target: http://user:password@target:5984
+databases: db1,db2,db3
+all: false
+concurrency: 1
+auth: false
+quiet: false
+live: true
+nomonitor: false
